@@ -696,3 +696,25 @@ networks:
   docker-compose rm 服务名
   ```
 
+**服务多开,防止服务挂掉**
+
+通过 --scale功能实现服务多开,不仅可以扩大,也可以缩小(前提不能再docker-compose中只设置一个ports)
+
+![屏幕快照 2020-06-08 下午11.17.10](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/03-docker-Dockerfile&&docker-compose/assets/屏幕快照 2020-06-08 下午11.17.10.png)
+
+下边的做法是错误的,应该将选中的部分删除
+
+![屏幕快照 2020-06-08 下午11.19.22](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/03-docker-Dockerfile&&docker-compose/assets/屏幕快照 2020-06-08 下午11.19.22.png)
+
+**实现负载均衡**
+
+![屏幕快照 2020-06-08 下午11.25.07](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/03-docker-Dockerfile&&docker-compose/assets/屏幕快照 2020-06-08 下午11.25.07.png)
+
+![屏幕快照 2020-06-08 下午11.27.33](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/03-docker-Dockerfile&&docker-compose/assets/屏幕快照 2020-06-08 下午11.27.33.png)
+
+![屏幕快照 2020-06-08 下午11.26.49](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/03-docker-Dockerfile&&docker-compose/assets/屏幕快照 2020-06-08 下午11.26.49.png)
+
+
+
+
+
