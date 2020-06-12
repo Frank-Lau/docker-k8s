@@ -22,6 +22,7 @@
      #执行上述指令之后会返回一个token,在另外一台linux上通过这个token就可以加入该集群成为worker
      docker swarm join --token token
      #总结:通过init指令创建节点,并指定本机ip,作为manager节点,返回一个token,集群中得其他成员通过该tonken加入该集群
+     ```
 ```
      
 ![屏幕快照 2020-06-09 下午2.21.58](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-09 下午2.21.58.png)
@@ -32,9 +33,11 @@
      
      
 
-```shell
+​```shell
 #显示当前swarm集群中的节点
 docker node ls
+#删除结点
+docker node rm
 ```
 
 ![屏幕快照 2020-06-09 下午2.27.12](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-09 下午2.27.12.png)
@@ -122,4 +125,49 @@ docker service create --name wordpress -p 80:80 --env WORDPRESS_DB_PASSWORD=root
 ![屏幕快照 2020-06-10 下午2.50.29](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-10 下午2.50.29.png)
 
 
+
+### 		2.5关于不同swarm节点上的service与service之间的通信
+
+swarm包含了内置的dns服务发现的功能,当我们创建一个service的时候,如果加入了overlay网络,那么swarm将会为所有加入了overlay网络的service添加一条DNS记录,通过DNS记录就可以找到ip地址,继而通过IP地址访问service,DNS记录的并不是实际的容器IP,而是service的虚拟IP(VIP),举个简单的例子,当service进行横向扩展时,会根据swarm集群中各个节点的资源情况进行调度分配到不同的worker上,既然有多个,那我到底要访问哪一个?没法访问了,而虚拟ip(vip)则不会变,一个vip对应了多个实际容器ip,并做了负载均衡
+
+![屏幕快照 2020-06-10 下午10.28.45](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-10 下午10.28.45.png)
+
+![屏幕快照 2020-06-10 下午11.06.55](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-10 下午11.06.55.png)
+
+
+
+![屏幕快照 2020-06-10 下午11.10.05](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-10 下午11.10.05.png)
+
+
+
+![屏幕快照 2020-06-10 下午11.11.31](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-10 下午11.11.31.png)
+
+
+
+![屏幕快照 2020-06-12 上午12.19.46](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-12 上午12.19.46.png)
+
+当swarm集群中有任一服务对外暴露端口时(-p 8080:8080),我们可以通过任一节点的ip+port访问到该服务,当访问到不存在该服务的节点时,通过ipvs(ipvs称之为IP[虚拟服务器](https://baike.baidu.com/item/虚拟服务器/5799459)（IP Virtual Server，简写为IPVS）。是运行在[LVS](https://baike.baidu.com/item/LVS/17738)下的提供负载平衡功能的一种技术)将请求转发到存放该服务的节点中
+
+![屏幕快照 2020-06-10 下午11.18.45](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-10 下午11.18.45.png)
+
+
+
+```shell
+#通过下方指令可查看端口的转发规则(只要访问端口为80端口的就会转发到172.19.0.2:80上)
+sudo iptables -nL -t nat
+```
+
+![屏幕快照 2020-06-12 上午12.36.21](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-12 上午12.36.21.png)
+
+```shell
+ifconfig
+```
+
+![屏幕快照 2020-06-12 上午12.42.29](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-12 上午12.42.29.png)
+
+```shell
+brctl show
+```
+
+![屏幕快照 2020-06-12 上午12.55.03](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-12 上午12.55.03.png)
 
