@@ -22,16 +22,16 @@
      #执行上述指令之后会返回一个token,在另外一台linux上通过这个token就可以加入该集群成为worker
      docker swarm join --token token
      #总结:通过init指令创建节点,并指定本机ip,作为manager节点,返回一个token,集群中得其他成员通过该tonken加入该集群
+     #解散集群
+     docker swarm leave --force
+     #加入集群的节点在manager节点执行上述指令后,也需要执行docker swarm leave指令,否则将无法加入其它的swarm集群
      ```
 ```
-     
-![屏幕快照 2020-06-09 下午2.21.58](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-09 下午2.21.58.png)
-     
+    
 在另一台linux上执行如下指令
      
 ![屏幕快照 2020-06-09 下午2.23.42](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-09 下午2.23.42.png)
-     
-     
+        
 
 ​```shell
 #显示当前swarm集群中的节点
