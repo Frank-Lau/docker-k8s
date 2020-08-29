@@ -142,9 +142,20 @@ swarm包含了内置的dns服务发现的功能,当我们创建一个service的�
 
 ![屏幕快照 2020-06-10 下午11.11.31](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-10 下午11.11.31.png)
 
+![屏幕快照 2020-08-25 下午5.17.41](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-25 下午5.17.41.png)
 
+![屏幕快照 2020-08-25 下午5.30.47](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-25 下午5.30.47.png)
+
+```shell
+#查看dns记录
+nslookup www.imooc.com#查看慕课网地址(mac自带工具)
+#创建busybox service和whoami service,加入同一网络,并将whoami scale设置为2,在busybox容器中ping whoami会拿到一个ip地址,但是这个ip地址并不是这两个服务的地址(是vip)想要查看实际的ip地址,需要执行如下命令才能看到实际ip地址
+nslookup tasks.whoami
+```
 
 ![屏幕快照 2020-06-12 上午12.19.46](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-12 上午12.19.46.png)
+
+
 
 当swarm集群中有任一服务对外暴露端口时(-p 8080:8080),我们可以通过任一节点的ip+port访问到该服务,当访问到不存在该服务的节点时,通过ipvs(ipvs称之为IP[虚拟服务器](https://baike.baidu.com/item/虚拟服务器/5799459)（IP Virtual Server，简写为IPVS）。是运行在[LVS](https://baike.baidu.com/item/LVS/17738)下的提供负载平衡功能的一种技术)将请求转发到存放该服务的节点中
 
@@ -170,4 +181,28 @@ brctl show
 ```
 
 ![屏幕快照 2020-06-12 上午12.55.03](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-06-12 上午12.55.03.png)
+
+查看加入网络的容器,发现端口转发将请求转发到了ingress-sbox
+
+![屏幕快照 2020-08-29 上午11.30.45](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-29 上午11.30.45.png)
+
+
+
+```shell
+sudo ls /var/run/docker/netns#查看network namespace
+```
+
+![屏幕快照 2020-08-29 上午11.35.09](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-29 上午11.35.09.png)
+
+
+
+```shell
+sudo nsenter --net=/var/run/docker/netns/ingress_sbox#进入该network namespace
+```
+
+
+
+![屏幕快照 2020-08-29 上午11.41.18](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-29 上午11.41.18.png)
+
+
 
