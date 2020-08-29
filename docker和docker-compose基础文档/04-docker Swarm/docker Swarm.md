@@ -206,3 +206,114 @@ sudo nsenter --net=/var/run/docker/netns/ingress_sbox#进入该network namespace
 
 
 
+```shell
+#查看实际的负载均衡,在改network namespace中执行下述指令
+iptables -nL -t mangle
+
+```
+
+
+
+![屏幕快照 2020-08-29 下午2.02.46](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-29 下午2.02.46.png)
+
+
+
+
+
+使用docker-compose version 部署wordpress
+
+```shell
+version: '3'
+
+services:
+
+  web:#实际名字为wordpress_web(wordpress为通过docker stack指令执行改文件时起的名字)
+    image: wordpress
+    ports:
+      - 8080:80
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_PASSWORD: root
+    networks:
+      - my-network#加入的网络(自动创建),实际名字为 wordpress_my-network
+    depends_on:
+      - mysql
+    deploy:
+      mode: replicated#可扩展服务数量,global为只有一个服务
+      replicas: 3#服务数量
+      restart_policy:#重启策略
+        condition: on-failure
+        delay: 5s#两次重启尝试之间等待的时间（默认值：0)
+        max_attempts: 3#尝试重新启动容器的次数（默认值：永不放弃)
+      update_config:#配置应如何更新服务
+        parallelism: 1#一次更新的容器数
+        delay: 10s#在更新一组容器之间等待的时间
+
+  mysql:
+    image: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: wordpress
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - my-network
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager#该service将部署在manager节点
+
+volumes:
+  mysql-data:
+
+networks:
+  my-network:
+    driver: overlay
+```
+
+
+
+```shell
+#运行该文件,创建多个service
+docker stack deploy wordpress --compose-file=docker-compose.yml
+#wordpress 为名字,与yml文件中的service名字不能冲突
+```
+
+
+
+![屏幕快照 2020-08-29 下午4.50.17](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-29 下午4.50.17.png)
+
+
+
+```shell
+#查看stack列表
+docker stack ls
+#查看详情
+docker stack ps wordpress
+#查看stack中service列表
+docker stack services wordpress
+#删除
+docker stack rm wordpress
+```
+
+列表
+
+![屏幕快照 2020-08-29 下午4.54.20](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-29 下午4.54.20.png)
+
+详情
+
+![屏幕快照 2020-08-29 下午4.57.35](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-29 下午4.57.35.png)
+
+service 列表
+
+![屏幕快照 2020-08-29 下午4.59.37](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-29 下午4.59.37.png)
+
+删除(会将service和创建的网络一同删除)
+
+![屏幕快照 2020-08-29 下午5.04.08](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-29 下午5.04.08.png)
+
+注意:使用docker swarm部署时yml文件中不能使用build参数
+
+![屏幕快照 2020-08-29 下午5.06.06](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-29 下午5.06.06.png)
+
