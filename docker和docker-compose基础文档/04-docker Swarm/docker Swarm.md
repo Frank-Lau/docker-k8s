@@ -242,7 +242,7 @@ services:
       mode: replicated#可扩展服务数量,global为只有一个服务
       replicas: 3#服务数量
       restart_policy:#重启策略
-        condition: on-failure
+        condition: on-failure#有失败则重启
         delay: 5s#两次重启尝试之间等待的时间（默认值：0)
         max_attempts: 3#尝试重新启动容器的次数（默认值：永不放弃)
       update_config:#配置应如何更新服务
@@ -316,4 +316,205 @@ service 列表
 注意:使用docker swarm部署时yml文件中不能使用build参数
 
 ![屏幕快照 2020-08-29 下午5.06.06](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-29 下午5.06.06.png)
+
+
+
+![屏幕快照 2020-08-31 上午12.31.30](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午12.31.30.png)
+
+
+
+![屏幕快照 2020-08-31 上午12.32.42](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午12.32.42.png)
+
+
+
+![屏幕快照 2020-08-31 上午12.33.54](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午12.33.54.png)
+
+
+
+manager节点中包含分布式存储机制(数据加密后存到硬盘),基于raft协议,生产环境中manager节点最少有两个,防止单点故障,manager节点和work节点之间的通信采用TLS加密
+
+![屏幕快照 2020-08-31 上午12.57.40](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午12.57.40.png)
+
+
+
+```shell
+#secret创建方式有两种,第一种通过文件,第二种通过STDIN
+#第一种
+vim password#内容admin123
+docker secret create my-pw password#my-pw为secret名字 password文件名
+#创建完尽量删掉,创建好之后就已经存储在manager raft datebase中了,并且是加密的
+rm password
+#第二种
+echo "adminadmin" | docker secret create my-pw2 -
+#查看secret
+docker secret ls
+```
+
+
+
+![屏幕快照 2020-08-31 上午1.06.17](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午1.06.17.png)
+
+
+
+![屏幕快照 2020-08-31 上午1.09.27](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午1.09.27.png)
+
+
+
+```shell
+#将secret暴露给指定容器`
+docker service create --name client --secret my-pw busybox sh -c "while true; do sleep 3600; done"
+```
+
+
+
+```shell
+#查看容器的secret权限
+#docker ps 查看并进入容器
+docker exec -it ccee sh
+cd /run/secrets/
+ls
+cat my-pw#可以看到密码明文
+```
+
+
+
+![屏幕快照 2020-08-31 上午1.17.31](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午1.17.31.png)
+
+
+
+```shell
+#创建mysql时使用secret
+docker service create --name db --secret my-pw -e MYSQL_ROOT_PASSWORD_FILE=/run/secrets/my-pw mysql#进入mysql容器就可以查看到可以使用的secret了
+```
+
+
+
+通过yml文件使用secret
+
+```shell
+version: '3'
+
+services:
+
+  web:
+    image: wordpress
+    ports:
+      - 8080:80
+    secrets:
+      - my-pw
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_PASSWORD_FILE: /run/secrets/my-pw
+    networks:
+      - my-network
+    depends_on:
+      - mysql
+    deploy:
+      mode: replicated
+      replicas: 3
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      update_config:
+        parallelism: 1
+        delay: 10s
+
+  mysql:
+    image: mysql
+    secrets:
+      - my-pw
+    environment:
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/my-pw
+      MYSQL_DATABASE: wordpress
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - my-network
+    deploy:
+      mode: global
+      placement:
+        constraints:
+          - node.role == manager
+
+volumes:
+  mysql-data:
+
+networks:
+  my-network:
+    driver: overlay
+#上边是值secret已经创建好了的情况下,如果没有创建好,那么需要下述方式创建,不推荐,含有安全隐患
+# secrets:
+#   my-pw:
+#    file: ./password
+```
+
+
+
+```yml
+#运行上述文件
+docker stack deploy woedpress -c=docker-cpmpose.yml
+```
+
+
+
+![屏幕快照 2020-08-31 上午1.38.03](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午1.38.03.png)
+
+
+
+service更新(业务不中断更新)
+
+![屏幕快照 2020-08-31 上午1.41.34](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午1.41.34.png)
+
+首先通过scale横向扩展成最少两个
+
+```shell
+docker service scale web=2
+```
+
+在另一台主机上设置脚本
+
+```shell
+sh -c "while true; do curl 127.0.0.1:8080&&sleep 1; done"
+```
+
+
+
+![屏幕快照 2020-08-31 上午1.51.53](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午1.51.53.png)
+
+
+
+开始更新
+
+```shell
+docker service update --image xiaopeng163/python-flask-demo:2.0 web
+```
+
+
+
+![屏幕快照 2020-08-31 上午1.55.17](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午1.55.17.png)
+
+
+
+查看脚本打印情况
+
+![屏幕快照 2020-08-31 上午1.56.16](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午1.56.16.png)
+
+存在1.0和2.0共存的情况,这种情况在生产环境是不允许的
+
+端口的跟新
+
+```shell
+docker service update --publish-rm 8080:5000 --publish-add 8088:5000 web#端口更新会有中断,不能像更新镜像一样实现不停车更新
+#完成后执行docker service ls
+docker service ls
+```
+
+
+
+![屏幕快照 2020-08-31 上午2.08.43](/Users/xiaodongliu/Desktop/docker-k8s/docker和docker-compose基础文档/04-docker Swarm/assets/屏幕快照 2020-08-31 上午2.08.43.png)
+
+
+
+如果是通过docker stack创建的服务,那么需要更改docker-compose.yml文件,然后重新执行创建操作
 
